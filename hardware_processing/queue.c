@@ -1,11 +1,8 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#define UART_ID uart0
-#define BAUD_RATE 115200
-#define UART_TX_PIN 1
-#define UART_RX_PIN 0
 #include "queue.h"
 
 #include "hardware/dma.h"
@@ -15,109 +12,145 @@
 #include "hardware/sync.h"
 
 // -----------------------------------------------------------------------------
-// EXTERN VARIABLE STORAGE
+// PRIVATE FUNCTION STORE
 // -----------------------------------------------------------------------------
- volatile packet_type_t current_packet = PACKET_NONE;
-
+PRIVATE uint8_t dequeue_keyboard(void)
 // -----------------------------------------------------------------------------
 // QUEUE STORAGE
 // -----------------------------------------------------------------------------
 
 struct queue_type {
-    BYTE buffer[BUF_LEN];
+    event_type_t queue[16]; //arbitrary number picked. Just a cheeky queue handler for interrupts
+    volatile uint8_t front;
+    volatile uint8_t rear;
+};
+
+struct keyboard_queue_type {
+    char queue[16]; //arbitrary number picked. Just a cheeky queue handler for interrupts
+    volatile uint8_t front;
+    volatile uint8_t rear;
 };
 
 static struct queue_type myQueue;
+static struct keyboard_queue_type keyboardQueue;
+static BYTE buffer[BUF_LEN];
 
-// -----------------------------------------------------------------------------
-// QUEUE INITIALIZATION
-// -----------------------------------------------------------------------------
-
-PUBLIC void queue_init(void) {
-    memset(myQueue.buffer, 0, BUF_LEN);
-}
 
 // -----------------------------------------------------------------------------
 // BUFFER ACCESSORS
 // -----------------------------------------------------------------------------
 
 PUBLIC uint8_t *give_array_address(void) {
-    return &myQueue.buffer[0];
+    return &buffer[0];
 }
 
 PUBLIC uint8_t *give_array_address_for_file_writing(void) {
-    return &myQueue.buffer[1];
+    return &buffer[1];
 }
 
-PUBLIC int get_queue_size(void) {
-    return myQueue.buffer[0];
+PUBLIC int get_buffer_size(void) {
+    return buffer[0];
 }
 
+
+// -----------------------------------------------------------------------------
+// INTERRUPT INITIALISATION(QUEUES)
+// -----------------------------------------------------------------------------
+PUBLIC void queue_init(void) {
+    memset(myQueue.queue, 0, 16);
+    memset(keyboardQueue.queue, 0, 16);
+    myQueue.front = 0;
+    myQueue.rear = 0;
+    keyboardQueue.front = 0;
+    keyboardQueue.rear = 0;
+}
+
+PUBLIC bool enqueue(event_type_t event) {
+    if (((myQueue.rear + 1) % 16) == myQueue.front) {
+        return false;    // Queue Full
+    }
+
+    myQueue.rear = (myQueue.rear + 1) % 16;
+    myQueue.queue[myQueue.rear] = event;
+    return true;
+}
+
+PUBLIC bool dequeue(event_type_t *event) {
+    if (myQueue.front == myQueue.rear) {
+        return false;    // Queue Empty
+    }
+    myQueue.front = (myQueue.front + 1) % 16;
+    *event = myQueue.queue[myQueue.front];
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+// KEYBOARD PACKET READ INITIALISATION(QUEUES). THIS WILL STORE DATA UNTIL ITS TIME to crap it out
+// -----------------------------------------------------------------------------
+
+PUBLIC bool enqueue_keyboard(uint8_t letter) {
+    if (((keyboardQueue.rear + 1) % 16) == keyboardQueue.front) {
+        return false;    // Queue Full
+    }
+
+    keyboardQueue.rear = (keyboardQueue.rear + 1) % 16;
+    keyboardQueue.queue[keyboardQueue.rear] = letter;
+    return true;
+}
+
+PUBLIC bool is_keyboard_empty(void)
+{
+    return (keyboardQueue.front == keyboardQueue.rear);
+}
+
+PRIVATE uint8_t dequeue_keyboard(void)
+{
+    keyboardQueue.front =
+        (keyboardQueue.front + 1) % 16;
+
+    return keyboardQueue.queue[keyboardQueue.front];
+}
+
+PUBLIC void keyboard_processing(void)
+{
+  uint8_t ch = dequeue_keyboard();
+  if(ch == '/r')
+  {
+    pio_sm_put()
+  } 
+}
 // -----------------------------------------------------------------------------
 // PACKET CLASSIFICATION
 // -----------------------------------------------------------------------------
 
-PUBLIC packet_type_t classify_packet(void) {
-    uint32_t size;
-    uint32_t status = save_and_disable_interrupts();
-    size = pio_sm_get(return_spi_pio(), return_spi_sm());
-    restore_interrupts(status);
-    set_size(size);
+PUBLIC void classify_packet(void) {
+    uint32_t size = get_queue_size();
 
-//     if (current_packet == PACKET_NONE) {
-      //size = pio_sm_get(return_spi_pio(), return_spi_sm());
-      //set_size(size);
-      //}
- // i//  uint8_t size = size >> 24;
-    
-    uintptr_t base = (uintptr_t)&myQueue.buffer[0];
+    if ((size == GARY_CODE) || (size == 0))
+    {
+        current_packet = PACKET_KEYBOARD;
+        pio_sm_put( return_spi_pio(), return_spi_sm(), 0);
+        enqueue(EVENT_KEYBOARD_DETECTED);
+    }
+    else
+    {
+        current_packet = PACKET_USB;
+
+        enqueue(EVENT_USB_DETECTED);
+    }
+}
+
+PUBLIC void check_usb_transfer() {
+
+    uintptr_t base = (uintptr_t)&buffer[0];
 
     uintptr_t write = dma_hw->ch[return_channel()].write_addr;
 
     uint32_t difference = write - base;
 
-    if(difference == size/2 && difference > 0){
-        usb_check = true;
-        current_packet = PACKET_START;
+    if(difference ==  return_size())
+    {
+        usb_transfer_done = true;
+        current_packet = PACKET_NONE;
     }
-
-//   static uint8_t i = 0; //should never go beyind 2
-
- //  if(myQueue.buffer[i] == 0 || myQueue.buffer[i] ==1)
-  //  {
-//        ++i;
-//    } 
-//        
-//    uint8_t first_usb = myQueue.buffer[i];
-
-    // -------------------------------------------------------------------------
-    // VALID SPI PACKET
-    // -------------------------------------------------------------------------
-
-    if ((size != GARY_CODE && size > 1)) {
-        pio_sm_put(return_spi_pio(), return_spi_sm(), 1); 
-        current_packet = PACKET_USB;
-        return PACKET_USB;
-    }
-
-    // -------------------------------------------------------------------------
-    // KEYBOARD PACKET
-    // -------------------------------------------------------------------------
-
-    if (size == GARY_CODE || size == 0) {
-        pio_sm_put(return_spi_pio(), return_spi_sm(), 0);
-        current_packet = PACKET_KEYBOARD;
-        return PACKET_KEYBOARD;
-    }
-
-    else {
-      current_packet = PACKET_NONE;
-      return PACKET_NONE;
-    }
-
-    // -------------------------------------------------------------------------
-    // UNKNOWN / INCOMPLETE PACKET
-    // -------------------------------------------------------------------------
-
-    return PACKET_NONE;
 }

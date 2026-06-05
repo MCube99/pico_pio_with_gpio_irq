@@ -43,6 +43,7 @@ PUBLIC void set_size(uint32_t size);
 PUBLIC PIO return_spi_pio();
 PUBLIC uint return_spi_sm();
 PUBLIC int return_channel();
+PUBLIC int return_first_byte_channel(void);
 
 
 PUBLIC int get_queue_size();

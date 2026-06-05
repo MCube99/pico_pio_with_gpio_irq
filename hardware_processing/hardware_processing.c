@@ -22,9 +22,12 @@
 typedef struct {
     PIO pio;
     uint sm;
+    //uint PIO_IRQc
     int dma_chan;
+    int dma_chan_first_byte;
     uint32_t size;
     dma_channel_config dma_cfg;
+    dma_channel_config dma_chan_first_byte_config;  
 } pio_spi_t;
 
 // -----------------------------------------------------------------------------
@@ -32,6 +35,7 @@ typedef struct {
 // -----------------------------------------------------------------------------
 
 static pio_spi_t pio_spi;
+static event_type_t event = EVENT_NONE;
 
 static volatile bool spi_irq_disabled = false;
 
@@ -69,18 +73,20 @@ PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {
     if (events & GPIO_IRQ_EDGE_FALL) {
 
         if(current_packet == PACKET_NONE) {
-            current_packet = PACKET_START;
+            
+            dma_start_channel_mask(1u << return_first_byte_channel());
+            enqueue(EVENT_SIZE_PACKET_RECIEVED);
         }
 
         if(current_packet == PACKET_USB) {
-            dma_start_channel_mask(1u << return_channel()); 
+            dma_start_channel_mask(1u << return_channel());
+            enqueue(EVENT_USB_DETECTED);
         }
 
-        if(current_packet == PACKET_KEYBOARD) {
-            pio_interrupt_clear(return_spi_pio(),2);
+        if(current_packet == PACKET_KEYBOARD){
+            enqueue(EVENT_KEYBOARD_DETECTED);
         }
     }
-
 }
 
 
@@ -102,19 +108,20 @@ PUBLIC void set_gpio_pins(void)
     
 
     // Clear any pending interrupts FIRST
-    gpio_acknowledge_irq(PICO_DEFAULT_SPI_CSN_PIN,
-        GPIO_IRQ_EDGE_FALL );
+    gpio_acknowledge_irq(PICO_DEFAULT_SPI_CSN_PIN, GPIO_IRQ_EDGE_FALL);
 
     // Set ISR
     irq_set_exclusive_handler(IO_IRQ_BANK0, my_gpio_isr);
 
     // Enable GPIO interrupt on CSN
-    gpio_set_irq_enabled(PICO_DEFAULT_SPI_CSN_PIN,
-        GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PICO_DEFAULT_SPI_CSN_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     // Enable IRQ bank
     irq_set_enabled(IO_IRQ_BANK0, true);
 }
+
+
+
 
 // -----------------------------------------------------------------------------
 // PIO + DMA SETUP
@@ -133,8 +140,12 @@ PUBLIC void pio_dma_setup(void)
         pio_spi.pio,
         pio_spi.sm,
         offset,
-        PICO_DEFAULT_SPI_RX_PIN);
+        PICO_DEFAULT_SPI_RX_PIN,
+        PICO_DEFAULT_SPI_CSN_PIN);
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // This is a seperator. The bottom section is for setting up dma for usb transfer for file processing.
+   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     pio_spi.dma_chan = dma_claim_unused_channel(true);
     pio_spi.dma_cfg = dma_channel_get_default_config(pio_spi.dma_chan);
     channel_config_set_transfer_data_size( &pio_spi.dma_cfg, DMA_SIZE_8);
@@ -151,9 +162,34 @@ PUBLIC void pio_dma_setup(void)
     dma_channel_configure(
         pio_spi.dma_chan,
         &pio_spi.dma_cfg,
-        give_array_address(),
+        give_array_address_for_file_writing(),
         &pio_spi.pio->rxf[pio_spi.sm],
         BUF_LEN,
+        false
+    );
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // This is a seperator. The bottom section is for reading size byte, while the top byte is for recieving usb payload
+   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    pio_spi.dma_chan_first_byte; dma_claim_unused_channel(true);
+    pio_spi.dma_chan_first_byte_config; dma_channel_get_default_config(pio_spi.dma_chan_first_byte);
+    channel_config_set_transfer_data_size( &pio_spi.dma_chan_first_byte_config, DMA_SIZE_8);
+    channel_config_set_read_increment( &pio_spi.dma_chan_first_byte_config, false);
+    channel_config_set_write_increment( &pio_spi.dma_chan_first_byte_config, true);
+    channel_config_set_dreq(
+        &pio_spi.dma_chan_first_byte_config,
+        pio_get_dreq(
+            pio_spi.pio,
+            pio_spi.sm,
+            false
+        )
+    );
+    dma_channel_configure(
+        pio_spi.dma_chan_first_byte,
+        &pio_spi.dma_chan_first_byte_config,
+        give_array_address(),
+        &pio_spi.pio->rxf[pio_spi.sm],
+        1,
         false
     );
 }
@@ -163,44 +199,6 @@ PUBLIC void pio_dma_setup(void)
 // -----------------------------------------------------------------------------
 // KEYBOARD PIO
 // -----------------------------------------------------------------------------
-
-//PUBLIC void pio_keyboard_setup(void)
-//
-//   pio_keyboard.pio = pio1;
-//
-//   pio_keyboard.sm =
-//       pio_claim_unused_sm(
-//           pio_keyboard.pio,
-//           true
-//       );
-//
-//   uint offset = pio_add_program(
-//       pio_keyboard.pio,
-//       &keyboard_input_program
-//   );
-//
-//   keyboard_input_program_init(
-//       pio_keyboard.pio,
-//       pio_keyboard.sm,
-//       offset,
-//       PICO_DEFAULT_SPI_RX_PIN
-//   );
-
-
-//PUBLIC void spi_slave_writing(void)
-//{
-     //spi_init(spi_default, 1000 * 1000);
-    //spi_set_slave(spi_default, true);
-    //gpio_set_function(PICO_DEFAULT_SPI_RX_PIN, GPIO_FUNC_SPI);
-    //gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
-    //gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);
-    //gpio_set_function(PICO_DEFAULT_SPI_CSN_PIN, GPIO_FUNC_SPI);
-    //// Make the SPI pins available to picotool
-    //bi_decl(bi_4pins_with_func(PICO_DEFAULT_SPI_RX_PIN, PICO_DEFAULT_SPI_TX_PIN, PICO_DEFAULT_SPI_SCK_PIN, PICO_DEFAULT_SPI_CSN_PIN, GPIO_FUNC_SPI));
-
-    
-//}
-
 // -----------------------------------------------------------------------------
 // ACCESSORS
 // -----------------------------------------------------------------------------
@@ -218,6 +216,11 @@ PUBLIC uint return_spi_sm(void)
 PUBLIC int return_channel(void)
 {
     return pio_spi.dma_chan;
+}
+
+PUBLIC int return_first_byte_channel(void)
+{
+    return pio_spi.dma_chan_first_byte;
 }
 
 
