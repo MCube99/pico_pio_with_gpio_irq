@@ -2,11 +2,10 @@
 
 .program keyboard_input
 
-keyboard_setup:
-    irq wait 1
 
 .wrap_target
 keyboard_processing:
+    irq wait 1
     wait 0 gpio 4
 
 bitloop:

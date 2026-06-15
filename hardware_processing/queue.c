@@ -68,20 +68,15 @@ PUBLIC void classify_packet(void) {
             pio_interrupt_clear(return_keyboard_pio(),1);
         }
         keyboard_check = true;
-        event_type_t classify_event = EVENT_KEYBOARD_DETECTED;
-        if(!enqueue_interrupts(classify_event)) {
-            return;
-        }
+        protocol_state = STATE_WAIT_FOR_KEYBOARD_DATA;
     }
 
     else if(size > 0 && size < GARY_CODE) {
         if(pio_interrupt_get(return_spi_pio(),0)){
             pio_interrupt_clear(return_spi_pio(),0);
         }
-        event_type_t classify_event = EVENT_USB_DETECTED;
-        if(!enqueue_interrupts(classify_event)){
-            return;
-        }
+        keyboard_check = false;
+        protocol_state = STATE_WAIT_FOR_USB_DATA;
     }
 }
 

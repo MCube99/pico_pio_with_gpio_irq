@@ -26,7 +26,7 @@
 
             "runToEntryPoint": "main",
 
-            "gdbPath": "C:/arm-none-eabi/bin/arm-none-eabi-gdb.exe",
+            "gdbPath": "C:/arm-gnu-toolchain-15.2.rel1-mingw-w64-i686-arm-none-eabi/bin",
 
             "svdFile": "C:/pico-sdk/src/rp2040/hardware_regs/rp2040.svd",
 

@@ -89,6 +89,7 @@ static char* convert_to_string(const volatile uint8_t *ch);
 PRIVATE uint8_t reverse_bits(uint8_t value);
 
 volatile bool keyboard_ready = false;
+volatile protocol_state_t protocol_state = STATE_WAIT_FOR_SIZE;
 
 
 
@@ -125,46 +126,51 @@ while (1)
     led_blinking_task();
     event_type_t event;
 
-
-
-    while (dequeue_interrupts(&event)) // this is a guardian, technically. 
-    {
+  while (dequeue_interrupts(&event))
+  {
       switch(event)
       {
+          case EVENT_CSN_ASSERTED:
+
+              if (keyboard_check)
+              {
+                  enqueue_interrupts(EVENT_KEYBOARD_DETECTED);
+              }
+              else
+              {
+                  enqueue_interrupts(EVENT_SIZE_PACKET_RECIEVED);
+              }
+              break;
+
           case EVENT_SIZE_PACKET_RECIEVED:
+
               classify_packet();
               break;
 
           case EVENT_USB_DETECTED:
-                usb_processing_main();
-                event = EVENT_FILE_PROCESSING;
-                enqueue_interrupts(event);
-                break;
+
+              usb_processing_main();
+              enqueue_interrupts(EVENT_FILE_PROCESSING);
+              break;
 
           case EVENT_FILE_PROCESSING:
+
               file_processing_main();
-              event = EVENT_PROCESSED;
-              enqueue_interrupts(event);
+              enqueue_interrupts(EVENT_PROCESSED);
               break;
 
-            case EVENT_KEYBOARD_DETECTED:
+          case EVENT_KEYBOARD_DETECTED:
               keyboard_processing_main();
-             // transmit_keyboard_data();
-          //    event = EVENT_KEYBOARD_DETECTED;
-            //  enqueue_interrupts(event);
-       //     transmit_keyboard_data();
-          //    keyboard_processing();
               break;
-                
-            case EVENT_PROCESSED:    //FALL THROUGH
-            default:
+
+          case EVENT_PROCESSED:
+          default:
               break;
       }
   }
 
-}
-  return 0;
-  }
+    return 0;
+    }
 
 
 //--------------------------------------------------------------------+

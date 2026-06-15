@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
+set(CMAKE_C_COMPILER "C:/arm-gnu-toolchain-15.2.rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-gcc" )
+set(CMAKE_CXX_COMPILER "C:/arm-gnu-toolchain-15.2.rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-g++" )
 set(PICO_TINYUSB_PATH "$ENV{PICO_TINYUSB_PATH}" CACHE PATH "Path to the TinyUSB path" FORCE)
 message(STATUS "PICO_TINYUSB_PATH: ${PICO_TINYUSB_PATH}")
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -26,11 +28,19 @@ set(toolchainVersion 14_2_Rel1)
 set(picotoolVersion 2.2.0)
 set(PICO_USE_PREBUILT_PICOTOOL ON CACHE BOOL "" FORCE)
 set(PICOTOOL_FETCH_FROM_GIT OFF CACHE BOOL "" FORCE)
-set(picotool_DIR "H:/picotool/install" CACHE PATH "" FORCE)
-set(PICO_NO_PICOTOOL 1)
+
+set(PICO_TOOLCHAIN_PATH
+    "C:/arm-gnu-toolchain-15.2.rel1-mingw-w64-i686-arm-none-eabi/bin"
+    CACHE PATH "" FORCE)
+
+set(picotool_DIR
+    "H:/picotool/install"
+    CACHE PATH "" FORCE)
+
+set(PICO_NO_PICOTOOL 1 CACHE BOOL "" FORCE)
 # ====================================================================================
 set(PICO_BOARD pico CACHE STRING "Board type")
-set(PICO_SDK_PATH "H:/pico_sdk" CACHE PATH "Path to the Raspberry Pi Pico SDK" FORCE)
+set(PICO_SDK_PATH "C:/pico-sdk" CACHE PATH "Path to the Raspberry Pi Pico SDK" FORCE)
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)

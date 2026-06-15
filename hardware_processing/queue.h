@@ -12,6 +12,7 @@
 typedef enum
 {
     EVENT_NONE=0,
+    EVENT_CSN_ASSERTED,
     EVENT_SIZE_PACKET_RECIEVED,
     EVENT_USB_DETECTED,
     EVENT_USB_PROCESSING,
@@ -21,6 +22,16 @@ typedef enum
     EVENT_PROCESSED
 } event_type_t;
 
+typedef enum
+{
+    STATE_WAIT_FOR_SIZE,
+    STATE_WAIT_FOR_USB_DATA,
+    STATE_WAIT_FOR_KEYBOARD_DATA,
+    STATE_LEGIT_CHARACTERS_INPUTTED,
+    STATE_ENTER_INPUTTED
+} protocol_state_t;
+
+extern volatile protocol_state_t protocol_state;
 extern volatile bool keyboard_check;
 
 

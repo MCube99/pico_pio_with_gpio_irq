@@ -76,33 +76,33 @@ PUBLIC void gpio_set_irq_active(uint gpio, uint32_t events, bool enabled) {
 // -----------------------------------------------------------------------------
 
 PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {
-    uint32_t events =  gpio_get_irq_event_mask(PICO_DEFAULT_SPI_CSN_PIN);
-    gpio_acknowledge_irq(PICO_DEFAULT_SPI_CSN_PIN,events); 
-    event_type_t current_event;
-    
-    // -------------------------------------------------------------------------
-    // CSn LOW -> START DMA AND CHECK STAGES 
+    uint32_t events = gpio_get_irq_event_mask(PICO_DEFAULT_SPI_CSN_PIN);
 
-    if (events & GPIO_IRQ_EDGE_FALL) {
-        dequeue_interrupts(&current_event);
-        
-        
-        switch(current_event) {
-            case EVENT_USB_DETECTED:
+    gpio_acknowledge_irq( PICO_DEFAULT_SPI_CSN_PIN, events);
+
+    if (events & GPIO_IRQ_EDGE_FALL)
+    {
+        switch(protocol_state){ //state to be enqueued from the main function
+            case STATE_WAIT_FOR_USB_DATA:
+                enqueue_interrupts(EVENT_USB_DETECTED);
                 break;
-            case EVENT_KEYBOARD_DETECTED:
-                if(keyboard_check){
-                    uint32_t status = save_and_disable_interrupts();
-                    pio_sm_put(return_keyboard_pio(),return_keyboard_sm(),(uint32_t)return_keyboard_characters());
-                    restore_interrupts_from_disabled(status);
-                }
+
+            case STATE_WAIT_FOR_KEYBOARD_DATA:
+                enqueue_interrupts(EVENT_KEYBOARD_DETECTED);
                 break;
-            default:
-                uint32_t status = save_and_disable_interrupts();
-                current_event = EVENT_SIZE_PACKET_RECIEVED;
-                enqueue_interrupts(current_event);
-                restore_interrupts_from_disabled(status);
+             
+            case STATE_LEGIT_CHARACTERS_INPUTTED:
+                pio_sm_put( return_keyboard_pio(), return_keyboard_sm(), 
+                (uint32_t)return_keyboard_characters());
+                enqueue_interrupts(STATE_WAIT_FOR_KEYBOARD_DATA);
                 break;
+
+            case STATE_ENTER_INPUTTED:
+                enqueue_interrupts(EVENT_PROCESSED);
+
+            default: // should always do this when unsure what to do.
+                 enqueue_interrupts(EVENT_SIZE_PACKET_RECIEVED); //default is this. Getting size
+                 break;
         }
     }
 }
@@ -112,7 +112,7 @@ PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {
 // -----------------------------------------------------------------------------
 
 PUBLIC void set_gpio_pins(void)
-{
+ {
     // CSN pin setup
     gpio_init(PICO_DEFAULT_SPI_CSN_PIN);
     gpio_set_dir(PICO_DEFAULT_SPI_CSN_PIN, GPIO_IN);
@@ -227,20 +227,18 @@ PUBLIC void keyboard_processing_main(void) {
     if(dequeue_keyboard(&ch)){
         if(ch == '/r') {
             pio_keyboard.ch = 0;
-            classify_event = EVENT_PROCESSED;
-        }else{
+            protocol_state = STATE_ENTER_INPUTTED;
+            keyboard_check = false;
+        }
+        else{
             pio_keyboard.ch = ch;
-            classify_event = EVENT_KEYBOARD_DETECTED;
-            keyboard_check = true;
+            protocol_state  = STATE_LEGIT_CHARACTERS_INPUTTED;
         } 
         enqueue_interrupts(classify_event);
-    }else{
-        keyboard_check = false;
     }
 }
                
-// -----------------------------------------------------------------------------
-// ACCESSORS
+// ----------------------------------------------------------------------------- // ACCESSORS
 // -----------------------------------------------------------------------------
 
 PUBLIC PIO return_spi_pio(void)
