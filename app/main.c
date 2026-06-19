@@ -88,18 +88,23 @@ static void process_kbd_report(hid_keyboard_report_t const *report);
 static char* convert_to_string(const volatile uint8_t *ch);
 PRIVATE uint8_t reverse_bits(uint8_t value);
 
+<<<<<<< HEAD
 volatile bool keyboard_ready = false;
 volatile protocol_state_t protocol_state = STATE_WAIT_FOR_SIZE;
 
 
 
+=======
+volatile bool main_check = true;
+bool usb_check = false;
+>>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
 
 /*------------- MAIN -------------*/
 int main(void)
 {
   uint32_t status = save_and_disable_interrupts();
+
   stdio_init_all();   // USB CDC (hardware USB → PC)
- 
   timer_hw->dbgpause = 0;
   board_init();
   
@@ -117,6 +122,7 @@ int main(void)
   pio_keyboard_setup();
   set_gpio_pins();
   msc_app_init();
+
   restore_interrupts_from_disabled(status);
 
 while (1)
@@ -126,8 +132,15 @@ while (1)
     led_blinking_task();
     event_type_t event;
 
+<<<<<<< HEAD
   while (dequeue_interrupts(&event))
   {
+=======
+
+
+    while ((main_check && dequeue_interrupts(&event))) // this is a guardian, technically. 
+    {
+>>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
       switch(event)
       {
           case EVENT_CSN_ASSERTED:
@@ -148,6 +161,7 @@ while (1)
               break;
 
           case EVENT_USB_DETECTED:
+<<<<<<< HEAD
 
               usb_processing_main();
               enqueue_interrupts(EVENT_FILE_PROCESSING);
@@ -164,9 +178,39 @@ while (1)
               break;
 
           case EVENT_PROCESSED:
+=======
+               usb_detection_main();
+                break;
+                
+          case EVENT_USB_PROCESSING:
+                bool check = usb_processing_main();
+                if(!check) {
+                  break;
+                } 
+
+          case EVENT_FILE_PROCESSING:
+                bool finished = file_processing_main();
+                if(!finished) {
+                  break;
+                }
+
+          case EVENT_FILE_PROCESSED:
+                file_processed_main();      
+                break;
+                
+          case EVENT_KEYBOARD_DETECTED:
+                keyboard_processing_main();
+                break;
+
+>>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
           default:
               break;
       }
+      if(event == EVENT_FILE_PROCESSING ){
+        main_check = true;
+      }
+      main_check = false;
+      break;
   }
 
     return 0;
