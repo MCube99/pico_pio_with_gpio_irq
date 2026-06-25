@@ -1,9 +1,8 @@
 #pragma once
 
 
-#include "hardware/pio.h"
 #include "common_header.h"
-
+#include "hardware/pio.h"
 
 #define BUF_LEN                               256
 #define NUMBER_OF_BYTES                       BUF_LEN 

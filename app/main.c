@@ -67,16 +67,7 @@
 #include "queue.h"
 #include "pico/stdlib.h"
 #include "hid.h"
-#include "hardware/pio.h"
  
-
-#define BSIZE 64
-#define ESC 27
-#define ENTER 10
-#define END_OF_TEXT 3   //Ctrl+C
-#define CANCEL 24       //Cancel
-
-
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
@@ -108,7 +99,7 @@ int main(void) {
   };
   tusb_init(BOARD_TUH_RHPORT, &host_init);
 
-  board_init_after_tusb();
+  //board_init_after_tusb();
   queue_init();
   pio_dma_setup();
   pio_keyboard_setup();
@@ -141,9 +132,6 @@ while ((main_check && dequeue_interrupts(&event))) // the main check acts as an 
               }
 // Fall through twice to EVENT_DONE to process it. Here and in FILE PROCESSING
 
-        case EVENT_DONE:
-              event_processing_main();
-              break;
 
         case EVENT_FILE_PROCESSING:
               bool file_finished = file_processing_main();
@@ -151,13 +139,17 @@ while ((main_check && dequeue_interrupts(&event))) // the main check acts as an 
                 break;
               }
 
-        case EVENT_DONE:
+        case EVENT_USB_DONE:
               event_processing_main();
               break;
 
 
         case EVENT_KEYBOARD_DETECTED:
               keyboard_processing_main();
+              break;
+
+        case EVENT_KEYBOARD_DONE:
+              event_processing_main();
               break;
 
         default:

@@ -7,6 +7,7 @@
 #include "hardware/dma.h"
 #include "hardware/uart.h"
 #include "hardware/sync.h"
+#include "hardware_processing.h"
 #include "ring_buf.h"
 
 // -----------------------------------------------------------------------------
@@ -84,21 +85,5 @@ PUBLIC void classify_packet(void) {
     }
 }
 
-PUBLIC void keyboard_processing() {
-  uint8_t ch; 
-
-  if(!dequeue_keyboard(&ch)) {
-    return; }
-
-  if(ch == '/r') {
-    pio_sm_put(return_spi_pio(),return_spi_sm(),0);
-    event_type_t classify_event = EVENT_DONE;
-    enqueue_interrupts(classify_event);
-  } 
-  else {
-    event_type_t classify_event = EVENT_KEYBOARD_DETECTED;
-     enqueue_interrupts(classify_event);
-  }
-}
 
 

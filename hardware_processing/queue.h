@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "common_header.h"
 #include "ring_buf.h"
-#include "hardware_processing.h"
 
 // -----------------------------------------------------------------------------
 // PACKET TYPES

@@ -9,17 +9,18 @@ target_sources(app_main
             ${PARENT_DIR}/tusb_src
             ${PARENT_DIR}/file_processing
             ${PARENT_DIR}/hardware_processing
-            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${PICO_TINYUSB_PATH}/hw
         FILES
+            ${PARENT_DIR}/hardware_processing/queue.h
             ${PARENT_DIR}/file_processing/file_processing.h
-            ${PARENT_DIR}/hardware_processing/common_header.h)
+            ${PICO_TINYUSB_PATH}/hw/bsp/board_api.h)
 
 ## target_include_directories(${EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-##target_compile_definitions(app_main PUBLIC CFG_TUH_ENABLED=1)
+##target_compile_definitions(app_main PUBLIC CF:eG_TUH_ENABLED=1)
 
 
 
-target_link_libraries(app_main PRIVATE file_processing host_storage pico_multicore hardware_clocks file_processing common_header)
+target_link_libraries(app_main PRIVATE tinyusb_host file_processing host_storage pico_multicore hardware_clocks file_processing common_headers)
 # target_include_directories(hardware_processing
 #     PUBLIC
 #         ${CMAKE_CURRENT_SOURCE_DIR}

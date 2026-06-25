@@ -7,7 +7,7 @@
 #include <string.h>
 #include "queue.h"
 #include <ctype.h>
-#include "common_header.h"
+#include "hardware_processing.h"
 
 
 
@@ -22,11 +22,11 @@ typedef struct
 
 typedef struct
 {
-    char dates[15];
-    char times[15];
-    char times_header[15];
-    char date_directory[15];
-    char *starting_pointer;
+    BYTE dates[15];
+    BYTE times[15];
+    BYTE times_header[15];
+    BYTE date_directory[15];
+    BYTE *starting_pointer;
 
 }File_Info;
 
@@ -81,15 +81,15 @@ FRESULT (*handle_error[])(FRESULT fr) = {
 };
 
 
-PRIVATE void extract_date_directory(const char *in, char *dates, size_t size);
-PRIVATE char* extract_time(const char *in, char *times, size_t size );
-PRIVATE void extract_date(char *in, char *dates, size_t size);
-PRIVATE char* extract_ohm(char *in, char *ohms, size_t size);
-PRIVATE char* extract_voltage(char *in, char *voltage, size_t size);
-PRIVATE char* extract_current(char *in, char *current, size_t size);
-PRIVATE char* extract_test_time(char *in, char *test_time, size_t size);
-PRIVATE char* extract_comment(char *in, char *comment, size_t size);
-PRIVATE char* extract_state(char *in, char *state, size_t size);
+PRIVATE void extract_date_directory(const BYTE *in, BYTE *dates, size_t size);
+PRIVATE BYTE* extract_time(const BYTE *in, BYTE *times, size_t size );
+PRIVATE void extract_date(BYTE *in, BYTE *dates, size_t size);
+PRIVATE BYTE* extract_ohm(BYTE *in, BYTE *ohms, size_t size);
+PRIVATE BYTE* extract_voltage(BYTE *in, BYTE *voltage, size_t size);
+PRIVATE BYTE* extract_current(BYTE *in, BYTE *current, size_t size);
+PRIVATE BYTE* extract_test_time(BYTE *in, BYTE *test_time, size_t size);
+PRIVATE BYTE* extract_comment(BYTE *in, BYTE *comment, size_t size);
+PRIVATE BYTE* extract_state(BYTE *in, BYTE *state, size_t size);
 
 
 PRIVATE bool check_if_folder_exists_in_date_directory(File_Info file_info);
@@ -108,7 +108,7 @@ PUBLIC bool file_processing_main( ) { //called file_processing_main because this
     memset(file_info.date_directory, 0, sizeof(file_info.date_directory));
 
 
-    uint8_t *buffer = give_array_address(); //give_array_address();
+    BYTE *buffer = give_array_address(); //give_array_address();
     // int n = sizeof(file_info.dates)/sizeof(file_info.dates[0]);
 
     extract_date_directory(buffer, file_info.date_directory,sizeof(file_info.dates));   // dates used as folder/directory name
@@ -131,7 +131,7 @@ PUBLIC bool file_processing_main( ) { //called file_processing_main because this
     }
 
     if(fr == FR_ALL_DONE){
-        event_type_t current_event = EVENT_DONE;
+        event_type_t current_event = EVENT_USB_DONE;
         enqueue_interrupts(current_event);
         return(true);
     }
@@ -144,7 +144,6 @@ PUBLIC bool file_processing_main( ) { //called file_processing_main because this
     
 }
 
->>>>>>> mcube/dma_cmake1
 ///////////FRESULT functions/////////////////////////
 
 PRIVATE FRESULT ok(FRESULT fr) {// This is the function to check what needs to be done. 
@@ -176,7 +175,7 @@ PRIVATE FRESULT start() { //This is the kick off function where the pico tries t
 
 PRIVATE FRESULT no_path(FRESULT fr) {
 
-    const char *fname = file_info.dates;
+    const BYTE *fname = file_info.dates;
     fr = f_mkdir(fname);
     return fr;
 }
@@ -236,12 +235,12 @@ PRIVATE FRESULT check_if_time_folder_already_exists(FRESULT fr) {
     TCHAR temp[64];
     TCHAR fullpath[64];
   // Declaring local values so that they get destroyed once function is done
-    char ohms[5];
-    char voltage[5];
-    char current[5];
-    char test_time[5];
-    char comment[30];
-    char state[6];
+    BYTE ohms[5];
+    BYTE voltage[5];
+    BYTE current[5];
+    BYTE test_time[5];
+    BYTE comment[30];
+    BYTE state[6];
    
 
       // sets value for arrays to all 0
@@ -258,7 +257,7 @@ PRIVATE FRESULT check_if_time_folder_already_exists(FRESULT fr) {
 
 
 
-    char *buffer = file_info.starting_pointer;
+    BYTE *buffer = file_info.starting_pointer;
     buffer = extract_ohm(buffer, ohms, sizeof(ohms)); //want to pass pointer and then modify pointer to pooubt ti bextl
     buffer = extract_voltage(buffer, voltage, sizeof(voltage));
     buffer = extract_current(buffer, current, sizeof(current));
@@ -440,7 +439,7 @@ PRIVATE FRESULT start_error(FRESULT fr) {
 static void get_file_info() {
     FRESULT fr;
     FILINFO fno;
-    const char *fname = "TRTEST";
+    const BYTE *fname = "TRTEST";
 
 
     printf("Test for \"%s\"...\n", fname);
@@ -481,7 +480,7 @@ static void get_file_info() {
 
 
 
-// PRIVATE void extract_date_directory(const char *in_buf, char *out)
+// PRIVATE void extract_date_directory(const BYTE *in_buf, BYTE *out)
 // {
 
     
@@ -505,15 +504,15 @@ static void get_file_info() {
 
 //// Extraction Function /////////////
 
-PRIVATE void extract_date_directory(const uint8_t *in, char *dates_directory, size_t size) {
+PRIVATE void extract_date_directory(const uint8_t *in, BYTE *dates_directory, size_t size) {
    memset(dates_directory,0,size);
    dates_directory[0] = '/';
    dates_directory[size-1]='\0';
 
-   char *start = strchr(in,'/');  
-   char *end = strchr(start+1,'/');
-   char* const beginning = in; //immutable pointer to first 
-   char *p = in+1;
+   BYTE *start = strchr(in,'/');  
+   BYTE *end = strchr(start+1,'/');
+   BYTE* const beginning = in; //immutable pointer to first 
+   BYTE *p = in+1;
 
    int i = 1;
    for(; p<end && i<size-1;p++){
@@ -526,7 +525,7 @@ PRIVATE void extract_date_directory(const uint8_t *in, char *dates_directory, si
    dates_directory[i++] = '-';
    ++p;
 
-   char *end_final = strchr(end+1,',');
+   BYTE *end_final = strchr(end+1,',');
    for(; p<end_final && i<size-1; p++)
    {
         dates_directory[i++] = *p;
@@ -536,11 +535,11 @@ PRIVATE void extract_date_directory(const uint8_t *in, char *dates_directory, si
 
 }
 
-PRIVATE void extract_date( char *in, char *dates, size_t size) {
+PRIVATE void extract_date( BYTE *in, BYTE *dates, size_t size) {
     memset(dates,0,size);
     dates[size-1]='\0';
-    char *end = strchr(in,'/');  
-    char *p = in+1;
+    BYTE *end = strchr(in,'/');  
+    BYTE *p = in+1;
 
     int i = 0;
      for(; p<end && i<size-1;p++){
@@ -552,7 +551,7 @@ PRIVATE void extract_date( char *in, char *dates, size_t size) {
 //    dates[i++] = '-';
 //    ++p;
 
-   char *end_final = strchr(end+1,',');
+   BYTE *end_final = strchr(end+1,',');
    for(; p<end_final && i<size-1; p++)
    {
     if (*p == '/'){ // / can be mistaken for directory
@@ -562,14 +561,14 @@ PRIVATE void extract_date( char *in, char *dates, size_t size) {
    }
 }
 
-PRIVATE char* extract_time(const char *in, char *time, size_t size) {
+PRIVATE BYTE* extract_time(const BYTE *in, BYTE *time, size_t size) {
     memset(time,0,size);
     time[size-1] = '\0';
-    char *start = strchr(in, ',');
-    char *end   = strchr(start + 1, ',');
-    char *const check = (char *)give_array_address();
+    BYTE *start = strchr(in, ',');
+    BYTE *end   = strchr(start + 1, ',');
+    BYTE *const check = (BYTE *)give_array_address();
     int i = 0;
-    char *p = start + 1;
+    BYTE *p = start + 1;
 
     for(; p < end && i < size-1; p++)
     {
@@ -589,17 +588,17 @@ PRIVATE char* extract_time(const char *in, char *time, size_t size) {
 
 }
 
-PRIVATE char* extract_ohm(char *in, char *ohms, size_t size) {
+PRIVATE BYTE* extract_ohm(BYTE *in, BYTE *ohms, size_t size) {
     memset(ohms, 0, size);
 
     
 
-     char *ptr  = strchr(in , ',');
+     BYTE *ptr  = strchr(in , ',');
     if (!ptr) return NULL;
 
     
 
-    char *ptr_end = strchr(ptr + 1, ','); // 
+    BYTE *ptr_end = strchr(ptr + 1, ','); // 
     if (!ptr_end) return NULL;
 
     ptr++;   // move past comma
@@ -620,14 +619,14 @@ PRIVATE char* extract_ohm(char *in, char *ohms, size_t size) {
     return ptr;
 }
 
-PRIVATE char* extract_voltage(char *in, char *voltage, size_t size) {
+PRIVATE BYTE* extract_voltage(BYTE *in, BYTE *voltage, size_t size) {
     memset(voltage, 0, size);
 
-    char *ptr = strchr(in, ',');    //1st comma
+    BYTE *ptr = strchr(in, ',');    //1st comma
     if (!ptr) return NULL;
 
 
-    char *ptr_end = strchr(ptr + 1, ',');
+    BYTE *ptr_end = strchr(ptr + 1, ',');
     if (!ptr_end) return NULL;
 
     ptr++;   // move past comma
@@ -649,13 +648,13 @@ PRIVATE char* extract_voltage(char *in, char *voltage, size_t size) {
 
 }
 
-PRIVATE char* extract_current(char *in, char *current, size_t size) {
+PRIVATE BYTE* extract_current(BYTE *in, BYTE *current, size_t size) {
     memset(current, 0, size);
 
-    char *ptr = strchr(in, ',');    //1st comma
+    BYTE *ptr = strchr(in, ',');    //1st comma
     if (!ptr) return NULL;
 
-    char *ptr_end = strchr(ptr + 1, ',');
+    BYTE *ptr_end = strchr(ptr + 1, ',');
     if (!ptr_end) return NULL;
 
      ptr++;   // move past comma
@@ -677,15 +676,15 @@ PRIVATE char* extract_current(char *in, char *current, size_t size) {
 
 }
 
-PRIVATE char* extract_test_time(char *in, char *test_time, size_t size) {
+PRIVATE BYTE* extract_test_time(BYTE *in, BYTE *test_time, size_t size) {
     memset(test_time, 0, size);
 
-    char *ptr = strchr(in, ',');    //1st comma
+    BYTE *ptr = strchr(in, ',');    //1st comma
     if (!ptr) return NULL;
 
 
 
-    char *ptr_end = strchr(ptr + 1, ',');
+    BYTE *ptr_end = strchr(ptr + 1, ',');
     if (!ptr_end) return NULL;
 
      ptr++;   // move past comma
@@ -707,13 +706,13 @@ PRIVATE char* extract_test_time(char *in, char *test_time, size_t size) {
 }
 
 
-PRIVATE char* extract_comment(char *in, char *comment, size_t size) {
+PRIVATE BYTE* extract_comment(BYTE *in, BYTE *comment, size_t size) {
     memset(comment, 0, size);
 
-    char *ptr = strchr(in, ',');    //1st comma
+    BYTE *ptr = strchr(in, ',');    //1st comma
     if (!ptr) return NULL;
 
-    char *ptr_end = strchr(ptr + 1, ',');
+    BYTE *ptr_end = strchr(ptr + 1, ',');
     if (!ptr_end) return NULL;
 
      ptr++;   // move past comma
@@ -734,13 +733,13 @@ PRIVATE char* extract_comment(char *in, char *comment, size_t size) {
     return ptr;
 }
 
-PRIVATE char* extract_state(char *in, char *state, size_t size) {
+PRIVATE BYTE* extract_state(BYTE *in, BYTE *state, size_t size) {
     memset(state, 0, size);
 
-    char *ptr = strchr(in, ',');    //1st comma
+    BYTE *ptr = strchr(in, ',');    //1st comma
     if (!ptr) return NULL;
 
-    char *ptr_end = strchr(ptr + 1, '\n');
+    BYTE *ptr_end = strchr(ptr + 1, '\n');
     if (!ptr_end) return NULL;
 
      ptr++;   // move past comma
@@ -770,7 +769,7 @@ PRIVATE char* extract_state(char *in, char *state, size_t size) {
 /* memset(dates,0,size);
  
     *(dates + size - 1) = '\0'; // ensure null termination
-    char *date_ptr = strchr(in,'/');
+    BYTE *date_ptr = strchr(in,'/');
 
     if(date_ptr == NULL)
     {
@@ -807,7 +806,7 @@ PRIVATE char* extract_state(char *in, char *state, size_t size) {
         }
     }
  
-   char *date_ptr2 = strchr(date_ptr + 1, '/'); // look for the second '/' starting from the character after the first '/'
+   BYTE *date_ptr2 = strchr(date_ptr + 1, '/'); // look for the second '/' starting from the BYTEacter after the first '/'
 
     if(date_ptr2 == NULL)
     {
@@ -837,7 +836,7 @@ PRIVATE char* extract_state(char *in, char *state, size_t size) {
         }
     }
 
-    char *date_ptr3 = strchr(date_ptr2+1, ',');
+    BYTE *date_ptr3 = strchr(date_ptr2+1, ',');
 
     int ptr_diff3 = date_ptr3 - date_ptr2; //get difference from 2nd / to the end of the string
     --ptr_diff3;
@@ -862,7 +861,7 @@ PRIVATE char* extract_state(char *in, char *state, size_t size) {
 {
     DIR dir;                // directory object (not a pointer)
     FILINFO filinfo;        // file information structure
-    char *filename;
+    BYTE *filename;
     FRESULT fr;
 
     // open current directory
@@ -933,14 +932,14 @@ PRIVATE char* extract_state(char *in, char *state, size_t size) {
 } */
 
 
-// void dir(const char *dirname)
+// void dir(const BYTE *dirname)
 // {
 //     FRESULT fr;
 // 	DIR *dp;
 // 	FILINFO file_info;
 // 	struct stat fs;
-// 	char *filename;
-// 	char directory[BUFSIZ];
+// 	BYTE *filename;
+// 	BYTE directory[BUFSIZ];
 //     fr = f_chdir(dirname)
 // 	if( fr != FR_OK )
 // 	{
@@ -975,7 +974,7 @@ PRIVATE char* extract_state(char *in, char *state, size_t size) {
 // 	closedir(dp);
 // }
 
-// PRIVATE void getcwd(char *buff, uint len)
+// PRIVATE void getcwd(BYTE *buff, uint len)
 // {
 
 //     fr = f_getcwd(cwd, BUFSIZE); 

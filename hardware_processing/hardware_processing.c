@@ -16,7 +16,7 @@
 #include "queue.h"
 
 #include "clocked_input.pio.h"
-#include "keyboard_input.pio.h"
+#include "keyboard_output.pio.h"
 
 // -----------------------------------------------------------------------------
 // STRUCTURES
@@ -103,13 +103,6 @@ PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {
             default:
                 enqueue_interrupts(EVENT_SIZE_PACKET_RECIEVED);
                 break;
-
-            case STATE_ENTER_INPUTTED:
-                enqueue_interrupts(EVENT_PROCESSED);
-
-            default: // should always do this when unsure what to do.
-                 enqueue_interrupts(EVENT_SIZE_PACKET_RECIEVED); //default is this. Getting size
-                 break;
         }
         
     }
@@ -129,10 +122,10 @@ PUBLIC void set_gpio_pins(void)
     gpio_set_dir(PICO_SPI_CSN_PIN, GPIO_IN);
     gpio_pull_up(PICO_SPI_CSN_PIN);
 
-    gpio_init(PICO_DEFAULT_SPI_KEYBOARD_PIN); 
-    gpio_set_dir(PICO_DEFAULT_SPI_KEYBOARD_PIN, true);
-    gpio_set_function(PICO_DEFAULT_SPI_KEYBOARD_PIN, GPIO_FUNC_SIO); 
-    gpio_pull_down(PICO_DEFAULT_SPI_KEYBOARD_PIN);
+    gpio_init(PICO_SPI_KEYBOARD_PIN); 
+    gpio_set_dir(PICO_SPI_KEYBOARD_PIN, true);
+    gpio_set_function(PICO_SPI_KEYBOARD_PIN, GPIO_FUNC_SIO); 
+    gpio_put(PICO_SPI_KEYBOARD_PIN,0);
 
     // Map PIO pins
     pio_gpio_init(return_spi_pio(), PICO_SPI_RX_PIN );
@@ -282,7 +275,7 @@ PUBLIC void keyboard_processing_main() {
         pio_sm_put_blocking(return_keyboard_pio(), return_keyboard_sm(),ch);
         if(ch == '\r'){
             gpio_put(PICO_SPI_KEYBOARD_PIN, 1);
-            classify_event = EVENT_DONE;
+            classify_event = EVENT_KEYBOARD_DONE;
             enqueue_interrupts(classify_event);
             return; // Simply return early
         }
