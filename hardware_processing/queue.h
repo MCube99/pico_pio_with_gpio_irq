@@ -17,26 +17,12 @@ typedef enum
     EVENT_USB_DETECTED,
     EVENT_USB_PROCESSING,
     EVENT_FILE_PROCESSING,
-    EVENT_FILE_PROCESSED,
+    EVENT_PROCESSED,
     EVENT_KEYBOARD_DETECTED,
 } event_type_t;
 
-<<<<<<< HEAD
-typedef enum
-{
-    STATE_WAIT_FOR_SIZE,
-    STATE_WAIT_FOR_USB_DATA,
-    STATE_WAIT_FOR_KEYBOARD_DATA,
-    STATE_LEGIT_CHARACTERS_INPUTTED,
-    STATE_ENTER_INPUTTED
-} protocol_state_t;
-
-extern volatile protocol_state_t protocol_state;
-extern volatile bool keyboard_check;
-=======
 extern volatile event_type_t event;
 extern volatile bool main_check;
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
 
 
 PUBLIC void classify_packet(void);

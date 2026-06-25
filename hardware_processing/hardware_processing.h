@@ -39,7 +39,7 @@ PUBLIC void usb_detection_main(void);
 PUBLIC bool usb_processing_main(void);
 PUBLIC void set_size(uint32_t size); 
 PUBLIC void keyboard_processing_main(void);
-PUBLIC void event_processing_main();
+PUBLIC void event_final_main();
 
 PUBLIC PIO const return_spi_pio();
 PUBLIC PIO const return_keyboard_pio(void);

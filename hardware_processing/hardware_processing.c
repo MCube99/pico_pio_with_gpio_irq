@@ -76,28 +76,6 @@ PUBLIC void gpio_set_irq_active(uint gpio, uint32_t events, bool enabled) {
 // GPIO ISR
 // -----------------------------------------------------------------------------
 
-<<<<<<< HEAD
-PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {
-    uint32_t events = gpio_get_irq_event_mask(PICO_DEFAULT_SPI_CSN_PIN);
-
-    gpio_acknowledge_irq( PICO_DEFAULT_SPI_CSN_PIN, events);
-
-    if (events & GPIO_IRQ_EDGE_FALL)
-    {
-        switch(protocol_state){ //state to be enqueued from the main function
-            case STATE_WAIT_FOR_USB_DATA:
-                enqueue_interrupts(EVENT_USB_DETECTED);
-                break;
-
-            case STATE_WAIT_FOR_KEYBOARD_DATA:
-                enqueue_interrupts(EVENT_KEYBOARD_DETECTED);
-                break;
-             
-            case STATE_LEGIT_CHARACTERS_INPUTTED:
-                pio_sm_put( return_keyboard_pio(), return_keyboard_sm(), 
-                (uint32_t)return_keyboard_characters());
-                enqueue_interrupts(STATE_WAIT_FOR_KEYBOARD_DATA);
-=======
 PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {    
 
     uint32_t events =  gpio_get_irq_event_mask(PICO_DEFAULT_SPI_CSN_PIN);
@@ -122,7 +100,6 @@ PRIVATE void __not_in_flash_func(my_gpio_isr)(void) {
                 break; 
             default:
                 enqueue_interrupts(EVENT_SIZE_PACKET_RECIEVED);
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
                 break;
 
             case STATE_ENTER_INPUTTED:
@@ -283,37 +260,32 @@ PUBLIC bool usb_processing_main(void){
 PUBLIC void keyboard_processing_main(void) {
     uint8_t ch;
     event_type_t classify_event;
-    if(dequeue_keyboard(&ch)){
-<<<<<<< HEAD
-        if(ch == '/r') {
-            pio_keyboard.ch = 0;
-            protocol_state = STATE_ENTER_INPUTTED;
-            keyboard_check = false;
-        }
-        else{
-            pio_keyboard.ch = ch;
-            protocol_state  = STATE_LEGIT_CHARACTERS_INPUTTED;
-        } 
-        enqueue_interrupts(classify_event);
-=======
-        if(pio_sm_is_tx_fifo_empty(return_keyboard_pio(),return_keyboard_sm())) {
-            pio_sm_put(return_keyboard_pio(), return_keyboard_sm(),ch);
-        }
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
+    if(!dequeue_keyboard(&ch)){
+        enqueue_interrupts(EVENT_KEYBOARD_DETECTED);
+        return;
     }
-    if(ch == '/r') {
-        pio_sm_restart(return_keyboard_pio(),return_keyboard_sm());
-        classify_event = EVENT_PROCESSED;
-    }        
+
+    while((dequeue_keyboard(&ch))){
+
+        if(ch != '\r'){ 
+            if(pio_sm_is_tx_fifo_empty(return_keyboard_pio(),return_keyboard_sm())) {
+                pio_sm_put(return_keyboard_pio(), return_keyboard_sm(),ch);
+            }
+
+        if(ch == '/r') {
+            pio_sm_put(return_keyboard_pio(), return_keyboard_sm(),ch);
+            pio_sm_exec(pio, sm, pio_encode_set(pio_x, 0)); // sets x to be 0 
+            classify_event = EVENT_PROCESSED;
+            }        
     enqueue_interrupts(classify_event);
+        }
 
 }
 
-PUBLIC void event_processing_main() {
-    if(pio_interrupt_get(return_spi_pio(),2)){
+PUBLIC void event_final_main() {
+    if(pio_interrupt_get(return_spi_pio(),2)){  //sign that usb is done
         pio_interrupt_clear(return_spi_pio(),2);
     }
-
 }
                
 // ----------------------------------------------------------------------------- // ACCESSORS

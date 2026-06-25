@@ -88,16 +88,9 @@ static void process_kbd_report(hid_keyboard_report_t const *report);
 static char* convert_to_string(const volatile uint8_t *ch);
 PRIVATE uint8_t reverse_bits(uint8_t value);
 
-<<<<<<< HEAD
-volatile bool keyboard_ready = false;
-volatile protocol_state_t protocol_state = STATE_WAIT_FOR_SIZE;
-
-
-
-=======
 volatile bool main_check = true;
+volatile bool keyboard_check = false;
 bool usb_check = false;
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
 
 /*------------- MAIN -------------*/
 int main(void)
@@ -132,53 +125,17 @@ while (1)
     led_blinking_task();
     event_type_t event;
 
-<<<<<<< HEAD
-  while (dequeue_interrupts(&event))
-  {
-=======
 
 
     while ((main_check && dequeue_interrupts(&event))) // this is a guardian, technically. 
     {
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
       switch(event)
       {
-          case EVENT_CSN_ASSERTED:
-
-              if (keyboard_check)
-              {
-                  enqueue_interrupts(EVENT_KEYBOARD_DETECTED);
-              }
-              else
-              {
-                  enqueue_interrupts(EVENT_SIZE_PACKET_RECIEVED);
-              }
-              break;
-
           case EVENT_SIZE_PACKET_RECIEVED:
-
               classify_packet();
               break;
 
           case EVENT_USB_DETECTED:
-<<<<<<< HEAD
-
-              usb_processing_main();
-              enqueue_interrupts(EVENT_FILE_PROCESSING);
-              break;
-
-          case EVENT_FILE_PROCESSING:
-
-              file_processing_main();
-              enqueue_interrupts(EVENT_PROCESSED);
-              break;
-
-          case EVENT_KEYBOARD_DETECTED:
-              keyboard_processing_main();
-              break;
-
-          case EVENT_PROCESSED:
-=======
                usb_detection_main();
                 break;
                 
@@ -202,19 +159,19 @@ while (1)
                 keyboard_processing_main();
                 break;
 
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
+          case EVENT_PROCESSED:
+
+
           default:
               break;
       }
-      if(event == EVENT_FILE_PROCESSING ){
-        main_check = true;
-      }
-      main_check = false;
-      break;
   }
 
-    return 0;
-    }
+  while(keyboard_check && )
+
+}
+  return 0;
+  }
 
 
 //--------------------------------------------------------------------+

@@ -129,14 +129,10 @@ PUBLIC bool file_processing_main( ) { //called file_processing_main because this
          fr = handle_error[fr](fr);
     }
 
-    event_type_t current_event = EVENT_FILE_PROCESSED;
+    event_type_t current_event = EVENT_PROCESSED;
     enqueue_interrupts(current_event);
     return(true);
     
-}
-
-PUBLIC void file_processed_main() {
-
 }
 
 

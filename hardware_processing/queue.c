@@ -75,12 +75,7 @@ PUBLIC void classify_packet(void) {
         if(pio_interrupt_get(return_keyboard_pio(),1)){
             pio_interrupt_clear(return_keyboard_pio(),1);
         }
-<<<<<<< HEAD
-        keyboard_check = true;
-        protocol_state = STATE_WAIT_FOR_KEYBOARD_DATA;
-=======
         classify_event = EVENT_KEYBOARD_DETECTED;
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
     }
 
     else if(size > 5 ) {
@@ -88,10 +83,6 @@ PUBLIC void classify_packet(void) {
         if(pio_interrupt_get(return_spi_pio(),0)){
             pio_interrupt_clear(return_spi_pio(),0);
         }
-<<<<<<< HEAD
-        keyboard_check = false;
-        protocol_state = STATE_WAIT_FOR_USB_DATA;
-=======
         classify_event = EVENT_USB_DETECTED;
     } 
 
@@ -103,7 +94,6 @@ PUBLIC void classify_packet(void) {
 
     if(!enqueue_interrupts(classify_event)) {
         return;
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
     }
 }
 

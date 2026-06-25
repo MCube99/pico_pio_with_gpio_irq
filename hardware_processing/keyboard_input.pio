@@ -2,24 +2,24 @@
 
 .program keyboard_input
 
-<<<<<<< HEAD
-
-.wrap_target
-=======
-keyboard_setup:
+keyboard_sets:
     set pindirs, 1
+    set x, 0
     irq wait 1
->>>>>>> 0e60d90fa300e0030290cad6ebbbe990d68fdfd0
-keyboard_processing:
-    irq wait 1
-    wait 0 gpio 4
+
+keyboard_setup:
+    pull ifempty block ;; pull if its empty, blocking while you do so
+    jmp !x keyboard_sets
+    wait 0 gpio 4 ;; Waits for csn and subsequently and low clock
+    out pins, 1  ; immediately after, so that the data is preloaded for the serial clock
 
 .wrap_target
 bitloop:
+    wait 1 pin 1 ; the master samples and shifts a bit here 
+    wait 0 pin 1 ; wait for 0 before loading up next transaction
     out pins, 1
-    wait 1 pin 1
 check_chip_select:
-    jmp pin keyboard_processing
+    jmp pin keyboard_setup ; if pin goes up then transaction is over, and wait for data.
 .wrap
 
 
@@ -34,7 +34,7 @@ static inline void keyboard_input_program_init(PIO pio, uint sm, uint offset, ui
     pio_gpio_init(pio, data_pin);
     sm_config_set_jmp_pin(&c, jmp_pin);
 
-    sm_config_set_out_shift(&c, false,true, 8);
+    sm_config_set_out_shift(&c, false,false, 8);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
     pio_sm_init(pio, sm, offset, &c);
