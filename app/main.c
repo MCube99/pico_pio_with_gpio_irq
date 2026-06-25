@@ -85,17 +85,16 @@ void led_blinking_task(void);
 static uint8_t const keycode2ascii[128][2] =  { HID_KEYCODE_TO_ASCII }; //was uint8_t originally
 
 static void process_kbd_report(hid_keyboard_report_t const *report);
-static char* convert_to_string(const volatile uint8_t *ch);
 PRIVATE uint8_t reverse_bits(uint8_t value);
 
 volatile bool main_check = true;
 volatile bool keyboard_check = false;
-bool usb_check = false;
 
 /*------------- MAIN -------------*/
-int main(void)
-{
+int main(void) {
   uint32_t status = save_and_disable_interrupts();
+  bool usb_finished = false;
+  bool file_finished  = false;
 
   stdio_init_all();   // USB CDC (hardware USB → PC)
   timer_hw->dbgpause = 0;
@@ -125,53 +124,51 @@ while (1)
     led_blinking_task();
     event_type_t event;
 
+////////////////////////////////////////////////////////// STATE MACHINE LOOP /////////////////////////////////////////////////////////////////////////////////////
 
-
-    while ((main_check && dequeue_interrupts(&event))) // this is a guardian, technically. 
+while ((main_check && dequeue_interrupts(&event))) // the main check acts as an entry gate
+  {
+    switch(event)
     {
-      switch(event)
-      {
-          case EVENT_SIZE_PACKET_RECIEVED:
-              classify_packet();
+        case EVENT_SIZE_PACKET_RECIEVED:
+            classify_packet();
+            break;
+
+        case EVENT_USB_PROCESSING:
+              bool usb_finished = usb_processing_main(); // the csn should not toggle after this, so it should fall straight down to file processing if its done correctly
+              if(!usb_finished){
+                break; 
+              }
+// Fall through twice to EVENT_DONE to process it. Here and in FILE PROCESSING
+
+        case EVENT_DONE:
+              event_processing_main();
               break;
 
-          case EVENT_USB_DETECTED:
-               usb_detection_main();
+        case EVENT_FILE_PROCESSING:
+              bool file_finished = file_processing_main();
+              if(!file_finished){
                 break;
-                
-          case EVENT_USB_PROCESSING:
-                bool check = usb_processing_main();
-                if(!check) {
-                  break;
-                } 
+              }
 
-          case EVENT_FILE_PROCESSING:
-                bool finished = file_processing_main();
-                if(!finished) {
-                  break;
-                }
-
-          case EVENT_FILE_PROCESSED:
-                file_processed_main();      
-                break;
-                
-          case EVENT_KEYBOARD_DETECTED:
-                keyboard_processing_main();
-                break;
-
-          case EVENT_PROCESSED:
-
-
-          default:
+        case EVENT_DONE:
+              event_processing_main();
               break;
-      }
-  }
 
-  while(keyboard_check && )
+
+        case EVENT_KEYBOARD_DETECTED:
+              keyboard_processing_main();
+              break;
+
+        default:
+            break;
+    }
+    main_check = false;
+    break;
+}
 
 }
-  return 0;
-  }
+}
 
 
 //--------------------------------------------------------------------+
@@ -321,85 +318,3 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
       return result;
   }
     
-  /* static char* convert_to_string(const volatile uint8_t *ch)
-  {
-
-      static char read[40]; // persistent buffer
-      
-      read[39] = '\0';
-      static uint8_t i = 0; //recalls how many time the function is calle and stores it. 
-        // Stop adding if buffer is full or an escape key is received
-
-      if (*ch == ESC || *ch == END_OF_TEXT || *ch == CANCEL || *ch == ENTER || i ==39 )
-      {
-        flag_check = FLAG_ESCAPE;
-        i=0;
-        return read;
-      }
-
-      if (i < 39 )  // ensure space for '\0'
-      {
-        read[i++] = (char)*ch; 
-        flag_check = FLAG_NOT_ESCAPE;
-      }
-  }
-
-  void clear_array(char* message)
-  {
-      while(*message)
-      {
-          *message = '\0';
-          message++;
-      }
-  } */
-
-
-
-
-  /* static void process_kbd_report(hid_keyboard_report_t const *report)
-  {
-    static hid_keyboard_report_t prev_report = { 0, 0, {0} }; // previous report to check key released
-    FILE *fptr;
-    char buffer[BSIZE];
-
-    fptr = fopen("usbhost.txt", "w");
-    //------------- example code ignore control (non-printable) key affects -------------//
-    for(uint8_t i=0; i<6; i++)
-    {
-      if ( report->keycode[i] )
-      {
-        if ( find_key_in_report(&prev_report, report->keycode[i]) )
-        {
-          // exist in previous report means the current key is holding
-        }else
-        {
-          // not existed in previous report means the current key is pressed
-          bool const is_shift = report->modifier & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT);
-          char ch = keycode2ascii[report->keycode[i]][is_shift ? 1 : 0];
-          //Maybe need to do something here to get it to output only characters 
-          
-          putchar(ch);
-          putchar('\n');
-          if ( ch == '\r' ) putchar('\n'); // added new line for enter key
-
-          fflush(stdout); // flush right away, else nanolib will wait for newline
-        }
-      }
-      // TODO example skips key released
-    }
-
-    prev_report = *report;
-  } */
-
-
-  ////Miscallaneous/////
-
-  ///
-      /*      else if (ch == '\r' || ch == '\n')  // handle newline
-                  {
-                      putchar('\n');
-                      fprintf(fptr, '\n');
-                  } */
-                  // fflush(fptr);    // flush file output immediately
-                  // fflush(stdout);  // flush terminal output
-//              }
