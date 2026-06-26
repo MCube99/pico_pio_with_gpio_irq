@@ -61,9 +61,9 @@ PUBLIC void classify_packet(void) {
 
     if ((size == GARY_CODE || size == GARY_CODE - 1 || size == GARY_CODE + 1 || size == 0)) { // edge cases where due to data transmission there could be wrong things
 
-        uint32_t status = save_and_disable_interrupts();
+        uint32_t status = save_and_disable_interrupts();// need to save and disable interrupts so that the write i not interrupted.;
         pio_sm_clear_fifos(return_keyboard_pio(), return_keyboard_sm());
-        keyboard_check = true; // need to save and disable interrupts so that the write i not interrupted.
+        keyboard_check = true; 
         pio_interrupt_clear(return_keyboard_pio(),1);
         classify_event = EVENT_KEYBOARD_DETECTED;
         restore_interrupts_from_disabled(status);

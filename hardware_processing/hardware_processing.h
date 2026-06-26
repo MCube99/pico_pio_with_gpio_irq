@@ -23,13 +23,17 @@ PUBLIC inline void dma_setup(uint32_t size);
 PUBLIC void queue_init();
 PUBLIC bool usb_processing_main(void);
 PUBLIC void set_size(uint32_t size); 
-PUBLIC void keyboard_processing_main();
+PUBLIC bool keyboard_processing_main();
 PUBLIC void event_processing_main();
 
-PUBLIC PIO const return_spi_pio();
 PUBLIC PIO const return_keyboard_pio(void);
-PUBLIC uint const return_spi_sm();
+PUBLIC uint const return_keyboard_offset(void);
 PUBLIC uint const return_keyboard_sm(void);
+
+PUBLIC PIO const return_spi_pio();
+PUBLIC uint const return_spi_sm();
+PUBLIC uint const return_spi_offset(void);
+
 PUBLIC int const return_channel();
 PUBLIC uint32_t const return_size(void); 
 

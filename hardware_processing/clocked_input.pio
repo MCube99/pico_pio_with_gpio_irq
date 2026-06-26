@@ -12,13 +12,14 @@ do_bit:
     wait 1 pin 1          ; (autopush takes care of moving each complete
     in pins, 1            ; data byte to the FIFO)
 check_chip_select:
-    jmp pin setting_count_for_usb
+    jmp pin choice        ; To be determined if 
 .wrap
 
 setting_count_for_usb:
     irq wait 0
     pull block
     mov x, osr
+    jmp !x flush          ; only applicable if from keyboard. Basically resets to top
     wait 0 gpio 4
 
 usb_setup:

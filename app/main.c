@@ -130,7 +130,6 @@ while ((main_check && dequeue_interrupts(&event))) // the main check acts as an 
               if(!usb_finished){
                 break; 
               }
-// Fall through twice to EVENT_DONE to process it. Here and in FILE PROCESSING
 
 
         case EVENT_FILE_PROCESSING:
@@ -140,21 +139,27 @@ while ((main_check && dequeue_interrupts(&event))) // the main check acts as an 
               }
 
         case EVENT_USB_DONE:
-              event_processing_main();
+              uint32_t status_usb = save_and_disable_interrupts();
+              event_processing_main(); // Atomic part of the code, cannot be interrupted. 
+              restore_interrupts_from_disabled(status_usb);
               break;
 
 
         case EVENT_KEYBOARD_DETECTED:
-              keyboard_processing_main();
-              break;
+              bool keyboard_finished = keyboard_processing_main();
+              if(keyboard_finished){ // will fall through if /r is pressed(or enter)
+              break; }
 
         case EVENT_KEYBOARD_DONE:
-              event_processing_main();
+              uint32_t status_keyboard = save_and_disable_interrupts();
+              event_processing_main(); // Atomic part of the code, cannot be interrupted. 
+              restore_interrupts_from_disabled(status_keyboard);
               break;
 
         default:
             break;
     }
+
     main_check = false;
     break;
 }

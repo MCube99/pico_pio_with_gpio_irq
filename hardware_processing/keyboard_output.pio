@@ -15,8 +15,9 @@ bitloop:
     wait 1 pin 1 ; the master samples and shifts a bit here 
     wait 0 pin 1 ; wait for 0 before loading up next transaction
 check_keyboard_select:
-    jmp !x keyboard_setup
+    jmp pin keyboard_setup
 .wrap
+
 
 
 % c-sdk {

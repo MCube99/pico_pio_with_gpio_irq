@@ -28,6 +28,7 @@ typedef struct {
     //uint PIO_IRQc
     int dma_chan;
     dma_channel_config dma_cfg;
+    uint offset;
 } pio_spi_t;
 
 typedef struct {
@@ -35,6 +36,7 @@ typedef struct {
     uint sm;
     uint8_t ch;
     uint num;
+    uint offset;
 } pio_keyboard_t;
 
 struct usb_payload {
@@ -132,6 +134,7 @@ PUBLIC void set_gpio_pins(void)
     pio_gpio_init(return_spi_pio(), PICO_SPI_SCK_PIN);
     pio_gpio_init(return_spi_pio(), PICO_SPI_TX_PIN);
 
+ // Clear FIFOS 
     pio_sm_clear_fifos(return_spi_pio(), return_spi_sm());
     pio_sm_clear_fifos(return_keyboard_pio(), return_keyboard_sm());
     // Clear any pending interrupts FIRST
@@ -162,10 +165,9 @@ PUBLIC void pio_dma_setup(void)
     pio_spi.sm = sm;
 
     uint offset = pio_add_program( pio_spi.pio, &clocked_input_program);
+    pio_spi.offset = offset;
 
     memset(usbPayload.buffer, 0, sizeof(usbPayload.buffer));
-    pio_sm_clear_fifos(pio_spi.pio, pio_spi.sm);
-    pio_sm_restart(pio_spi.pio, pio_spi.sm);
     clocked_input_program_init(
         pio_spi.pio,
         pio_spi.sm,
@@ -206,9 +208,10 @@ PUBLIC void pio_keyboard_setup(void){
     uint sm = pio_claim_unused_sm(pio, true);
     pio_keyboard.pio = pio;
     pio_keyboard.sm = sm;
-    uint offset = pio_add_program( pio, &keyboard_input_program);
     pio_sm_clear_fifos(pio_keyboard.pio, pio_keyboard.sm);
     pio_sm_restart(pio_keyboard.pio, pio_keyboard.sm);
+    uint offset = pio_add_program( pio, &keyboard_input_program);
+    pio_keyboard.offset = offset;
     keyboard_input_program_init(pio,
         sm,
         offset,
@@ -247,8 +250,7 @@ PUBLIC bool usb_processing_main(void) {
         tight_loop_contents();
     dma_hw->ints0 = 1u << return_channel();
      // The bottom section uses hardware registers to see how much has been written to the buffer
-    // and then compare to 
-    // for the IRQ flag instead of setting up an interrupt handler.
+    // and then compare to base address to see how much has been written. 
     uintptr_t base = (uintptr_t)usbPayload.buffer;
     uintptr_t write = dma_hw->ch[return_channel()].write_addr;
     uint32_t difference = write - base;
@@ -265,34 +267,42 @@ PUBLIC bool usb_processing_main(void) {
     }
 }
 
-PUBLIC void keyboard_processing_main() {
+PUBLIC bool keyboard_processing_main() {
     uint8_t ch = 0; 
     event_type_t classify_event;
-    if(pio_sm_is_tx_fifo_full(return_keyboard_pio(), return_keyboard_sm())){
-        pio_sm_drain_tx_fifo(return_keyboard_pio(), return_keyboard_sm());
-    }
+   // if(pio_sm_is_tx_fifo_full(return_keyboard_pio(), return_keyboard_sm())){
+   //     pio_sm_drain_tx_fifo(return_keyboard_pio(), return_keyboard_sm());
+   // }
     if(dequeue_keyboard(&ch)){
         pio_sm_put_blocking(return_keyboard_pio(), return_keyboard_sm(),ch);
         if(ch == '\r'){
             gpio_put(PICO_SPI_KEYBOARD_PIN, 1);
             classify_event = EVENT_KEYBOARD_DONE;
             enqueue_interrupts(classify_event);
-            return; // Simply return early
+            return(false); // Simply return early
         }
     }
 
     classify_event = EVENT_KEYBOARD_DETECTED; 
     pio_keyboard.num = pio_sm_get_tx_fifo_level(return_keyboard_pio(), return_keyboard_sm());
     enqueue_interrupts(classify_event);
+    return(true);
 }
 
 PUBLIC void event_processing_main() {
     if(pio_interrupt_get(return_keyboard_pio(),1)){
-        gpio_put(PICO_SPI_KEYBOARD_PIN, 0);
+        gpio_put(PICO_SPI_KEYBOARD_PIN, 0); // lower the gpio pin so it stops jumping
+        pio_sm_clear_fifos(pio_keyboard.pio, pio_keyboard.sm);
+        pio_sm_drain_tx_fifo(pio_keyboard.pio, pio_keyboard.sm);
+        pio_interrupt_clear(return_spi_pio(),0);
+        pio_sm_put(return_spi_pio(), 0);
         keyboard_check = false;
+        main_check = true;
     }
 
     if(pio_interrupt_get(return_spi_pio(), 2)){
+        dma_channel_cleanup(return_channel());
+        dma_channel_unclaim(return_channel());
         pio_interrupt_clear(return_spi_pio(), 2);
     }
     enqueue_interrupts(EVENT_NONE);
@@ -312,6 +322,11 @@ PUBLIC uint const return_spi_sm(void)
     return pio_spi.sm;
 }
 
+PUBLIC uint const return_spi_offset(void)
+{
+    return pio_spi.offset;
+}
+
 PUBLIC PIO const return_keyboard_pio(void)
 {
     return pio_keyboard.pio;
@@ -322,18 +337,24 @@ PUBLIC uint const return_keyboard_sm(void)
     return pio_keyboard.sm;
 }
 
+PUBLIC uint const return_keyboard_offset(void)
+{
+    return(pio_keyboard.offset);
+}
+
 
 PUBLIC void set_size(uint32_t size) 
 {
     usbPayload.size = size;
 }
 
-PUBLIC uint32_t return_size(void) 
+PUBLIC uint32_t const return_size(void) 
 {
     return usbPayload.size;
 }
 
-PUBLIC int return_channel(void)
+PUBLIC int const return_channel(void)
 {
     return pio_spi.dma_chan;
 }
+
