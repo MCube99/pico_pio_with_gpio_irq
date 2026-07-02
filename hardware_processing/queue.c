@@ -16,11 +16,20 @@
 #define KEYBOARD_BUFFER_SIZE 32
 #define STATE_AND_QUEUE_SIZE 10
 
+struct usb_payload {
+    uint32_t size;
+    uint32_t difference;
+    BYTE buffer[BUF_LEN];
+}; // for USB PAYLOAD. This is where DMA data will go to
+
+static struct usb_payload usbPayload;
+
 RingBufElement queue_buffer[STATE_AND_QUEUE_SIZE];
 RingBuf interrupt_queue;
 
 RingBufElement keyboard_buffer[KEYBOARD_BUFFER_SIZE];
 RingBuf keyboard_queue;
+
 
 PUBLIC void queue_init(void){
     RingBuf_ctor(&interrupt_queue, queue_buffer, STATE_AND_QUEUE_SIZE);
@@ -49,41 +58,30 @@ PUBLIC bool dequeue_keyboard(uint8_t *letter) {
     return(check); 
 }
 
-
 // -----------------------------------------------------------------------------
-// PROCESSING PLACE
+// BUFFER ACCESSORS
 // -----------------------------------------------------------------------------
-PUBLIC void classify_packet(void) {
 
-    event_type_t classify_event;
-    uint32_t size=pio_sm_get_blocking(return_spi_pio(), return_spi_sm());
-    set_size(size);
-
-    if ((size == GARY_CODE || size == GARY_CODE - 1 || size == GARY_CODE + 1 || size == 0)) { // edge cases where due to data transmission there could be wrong things
-
-        uint32_t status = save_and_disable_interrupts();// need to save and disable interrupts so that the write i not interrupted.;
-        pio_sm_clear_fifos(return_keyboard_pio(), return_keyboard_sm());
-        keyboard_check = true; 
-        pio_interrupt_clear(return_keyboard_pio(),1);
-        classify_event = EVENT_KEYBOARD_DETECTED;
-        restore_interrupts_from_disabled(status);
-    }
-
-    else if(size != GARY_CODE ) {
-
-        uint32_t status = save_and_disable_interrupts();
-        pio_interrupt_clear(return_spi_pio(),0);
-        pio_sm_put(return_spi_pio(),return_spi_sm(),size);
-        dma_setup(size);
-        classify_event = EVENT_USB_PROCESSING;
-        restore_interrupts_from_disabled(status);
-    } 
-
-
-    if(!enqueue_interrupts(classify_event)) {
-        return;
-    }
+PUBLIC uint8_t *const give_array_address(void) {
+    return usbPayload.buffer;
 }
 
+PUBLIC uint8_t *const give_array_address_for_file_writing(void) {
+    return &usbPayload.buffer[1];
+}
+
+PUBLIC int get_buffer_size(void) {
+    return usbPayload.buffer[0];
+}
+
+PUBLIC void set_size(uint32_t size) 
+{
+    usbPayload.size = size;
+}
+
+PUBLIC uint32_t return_size(void) 
+{
+    return usbPayload.size;
+}
 
 
