@@ -1,5 +1,7 @@
-pragma once
 // This is for common use which don' really belong in any other module/header file since its so generic
+#ifndef COMMON_HEADER_H
+#define COMMON_HEADER_H
+#endif
 
 #include <stdbool.h>
 #include <stdint.h>

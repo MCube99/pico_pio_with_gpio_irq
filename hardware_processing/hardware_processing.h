@@ -1,4 +1,7 @@
-#pragma once
+#ifndef HARDWARE_PROCESSING_H"
+#define HARDWARE_PROCESSING_H
+#endif
+
 #include "common_header.h"
 #include "hardware/pio.h"
 

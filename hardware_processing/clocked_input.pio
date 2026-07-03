@@ -12,12 +12,13 @@ do_bit:
     wait 1 pin 1          ; (autopush takes care of moving each complete
     in pins, 1            ; data byte to the FIFO)
 check_chip_select:
-    jmp pin choice        ; To be determined if 
+    jmp pin setting_count_for_usb        ; jmp to setting count for further processing 
 .wrap
 
 setting_count_for_usb:
     irq wait 0
     pull block
+    jmp !x keyboard_mosi
     mov x, osr
     jmp !x flush          ; only applicable if from keyboard. Basically resets to top
     wait 0 gpio 4
@@ -30,9 +31,20 @@ usb_processing:
     wait 1 pin 1
     in pins, 1             ; Shifts bit count bits from source into the INPUT SHIFT REGISTER 
     jmp y-- usb_processing
-    jmp x-- usb_setup
+    jmp x-- setup
     wait 1 gpio 4
+    jmp reset
+
+keyboard_setup:
+    set y, 7
+
+keyboard_mosi:
+    wait 1 pin 1
+    in pins, 1
+    wait 0 pin 1 
+    jmp x--, keyboard_mosi
     jmp pin reset
+    jmp keyboard_setup 
 
 
 reset:

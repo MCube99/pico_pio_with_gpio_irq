@@ -79,9 +79,12 @@ PUBLIC void set_size(uint32_t size)
     usbPayload.size = size;
 }
 
-PUBLIC uint32_t return_size(void) 
+PUBLIC uint32_t const return_size(void) 
 {
     return usbPayload.size;
 }
 
-
+PUBLIC int const return_channel(void)
+{
+    return pio_spi.dma_chan;
+}
